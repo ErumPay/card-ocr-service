@@ -8,4 +8,3 @@ class CardOcrResponse(BaseModel):
     warnings: list[str]
 
     model_config = {"populate_by_name": True}
-

@@ -10,6 +10,8 @@ start = "uvicorn card_ocr_service.main:app --host 0.0.0.0 --port 8086"
 test = "pytest"
 lint = "ruff check ."
 format = "ruff format ."
+debug-preprocess = "python scripts/debug_preprocess_images.py"
+debug-ocr-texts = "python scripts/debug_ocr_texts.py"
 
 [dependencies]
 python = "3.11.*"
@@ -21,7 +23,11 @@ numpy = ">=1.26,<2"
 opencv = ">=4.13.0,<5"
 pytest = ">=9.0.3,<10"
 ruff = ">=0.15.14,<0.16"
+setuptools = ">=80.9.0,<81"
 
 [pypi-dependencies]
+card-ocr-service = { path = ".", editable = true }
 paddleocr = ">=2.9.0,<3"
 paddlepaddle = ">=2.6.0,<3"
+pillow = ">=10.0.0,<12"
+pillow-heif = ">=0.20.0,<1"
