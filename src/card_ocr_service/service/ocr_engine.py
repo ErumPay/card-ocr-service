@@ -21,6 +21,10 @@ class PaddleOcrEngine:
     def __init__(self) -> None:
         self._ocr_client: Any | None = None
 
+    def preload(self) -> None:
+        # 서버 시작 시 모델을 미리 로딩해 첫 OCR 요청 지연을 줄인다.
+        self._client()
+
     def extract_texts(self, image: np.ndarray) -> list[OcrTextLine]:
         # PaddleOCR에 넘기기 직전에 grayscale 이미지를 BGR 3채널 이미지로 맞춘다.
         ocr_input = self._to_paddle_input(image)
@@ -35,7 +39,7 @@ class PaddleOcrEngine:
         if self._ocr_client is None:
             from paddleocr import PaddleOCR
 
-            # 첫 OCR 요청 때만 모델을 로딩한다. 앱 시작 시간을 줄이기 위한 lazy-load 방식이다.
+            # PaddleOCR 모델 객체를 생성한다. 기본 실행에서는 FastAPI lifespan에서 미리 호출한다.
             self._ocr_client = PaddleOCR(
                 use_angle_cls=False,
                 lang="en",

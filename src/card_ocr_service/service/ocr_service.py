@@ -23,6 +23,12 @@ class OcrService:
         self._preprocessor = ImagePreprocessor()
         self._ocr_engine = ocr_engine or PaddleOcrEngine()
 
+    def preload(self) -> None:
+        # PaddleOCR 구현체가 지원하면 서버 시작 시 모델을 미리 올린다.
+        preload = getattr(self._ocr_engine, "preload", None)
+        if callable(preload):
+            preload()
+
     def extract(
         self,
         image_bytes: bytes,
