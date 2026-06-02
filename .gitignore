@@ -1,0 +1,9 @@
+# pixi environments
+.pixi/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.env
+data/
+*.egg-info/
+tests/
