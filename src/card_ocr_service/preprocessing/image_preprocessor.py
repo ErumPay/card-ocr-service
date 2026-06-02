@@ -23,7 +23,7 @@ class PreprocessedImage:
 
 
 class ImagePreprocessor:
-    DEFAULT_VARIANT = "hist_equalize"
+    DEFAULT_VARIANT = "clahe_sharpen"
     COMPARISON_VARIANTS = (
         "clahe",
         "hist_equalize",
@@ -31,7 +31,6 @@ class ImagePreprocessor:
         "hist_equalize_sharpen",
     )
     MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024
-    MAX_LONG_SIDE = 1024
     JPEG_QUALITY = 85
     CLAHE_CLIP_LIMIT = 2.0
     CLAHE_TILE_GRID_SIZE = (8, 8)
@@ -140,7 +139,7 @@ class ImagePreprocessor:
 
     # 전처리 기법을 추가할 때 이 tuple에 메서드를 순서대로 넣는다.
     def _preprocessing_steps(self, variant: PreprocessingVariant) -> tuple[PreprocessingStep, ...]:
-        base_steps = (self._resize_long_side, self._to_grayscale)
+        base_steps = (self._to_grayscale,)
         match variant:
             case "clahe":
                 return (*base_steps, self._apply_clahe)
@@ -156,17 +155,6 @@ class ImagePreprocessor:
                 )
             case _:
                 raise ValueError(f"unsupported preprocessing variant: {variant}")
-
-    # 긴 변이 기준값보다 큰 이미지만 비율을 유지한 채 축소한다.
-    def _resize_long_side(self, image: np.ndarray) -> np.ndarray:
-        height, width = image.shape[:2]
-        long_side = max(width, height)
-        if long_side <= self.MAX_LONG_SIDE:
-            return image
-
-        scale = self.MAX_LONG_SIDE / long_side
-        next_size = (int(width * scale), int(height * scale))
-        return cv2.resize(image, next_size, interpolation=cv2.INTER_AREA)
 
     # grayscale 이미지로 변환
     def _to_grayscale(self, image: np.ndarray) -> np.ndarray:
@@ -214,7 +202,6 @@ class ImagePreprocessor:
             return kernel_size + 1
         return kernel_size
 
-    # 디버그 저장과 후속 OCR 입력 포맷 확인을 위해 JPEG bytes로 고정한다.
     def _encode_jpeg(self, image: np.ndarray) -> bytes:
         success, encoded = cv2.imencode(
             ".jpg",

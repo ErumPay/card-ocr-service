@@ -44,6 +44,7 @@ class PaddleOcrEngine:
                 use_angle_cls=False,
                 lang="en",
                 show_log=False,
+                det_limit_side_len=512,
             )
         return self._ocr_client
 

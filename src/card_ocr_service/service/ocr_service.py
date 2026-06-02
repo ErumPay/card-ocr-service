@@ -1,11 +1,18 @@
+import logging
+import os
 from dataclasses import dataclass
+from datetime import UTC, datetime
+from pathlib import Path
+from uuid import uuid4
 
 import numpy as np
 
 from card_ocr_service.parser.card_parser import find_card_number, normalize_expiry_ym
-from card_ocr_service.preprocessing.image_preprocessor import ImagePreprocessor
+from card_ocr_service.preprocessing.image_preprocessor import ImagePreprocessor, PreprocessedImage
 from card_ocr_service.schemas.ocr import CardOcrResponse
 from card_ocr_service.service.ocr_engine import OcrEngine, OcrTextLine, PaddleOcrEngine
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -18,6 +25,9 @@ class OcrAttemptResult:
 
 class OcrService:
     FALLBACK_ROTATIONS = (1, 3)
+    DEBUG_SAVE_PREPROCESSED_ENV = "CARD_OCR_DEBUG_SAVE_PREPROCESSED"
+    DEBUG_DIR_ENV = "CARD_OCR_DEBUG_DIR"
+    DEFAULT_DEBUG_DIR = "data/debug"
 
     def __init__(self, ocr_engine: OcrEngine | None = None) -> None:
         self._preprocessor = ImagePreprocessor()
@@ -36,12 +46,13 @@ class OcrService:
         filename: str | None,
     ) -> CardOcrResponse:
         try:
-            # 업로드 이미지를 decode/resize/grayscale 등 OCR 입력용 이미지로 먼저 변환한다.
+            # 업로드 이미지를 decode/grayscale/CLAHE/sharpen 순서로 OCR 입력용 이미지로 변환한다.
             preprocessed_image = self._preprocessor.preprocess(
                 image_bytes,
                 content_type=content_type,
                 filename=filename,
             )
+            self._save_preprocessed_debug_image(preprocessed_image)
         except ValueError:
             return CardOcrResponse(
                 card_number=None,
@@ -128,3 +139,35 @@ class OcrService:
         if not ocr_lines:
             return 0.0
         return round(max(line.confidence for line in ocr_lines), 4)
+
+    def _save_preprocessed_debug_image(self, preprocessed_image: PreprocessedImage) -> None:
+        if not _is_truthy(os.getenv(self.DEBUG_SAVE_PREPROCESSED_ENV)):
+            return
+
+        debug_dir = Path(os.getenv(self.DEBUG_DIR_ENV, self.DEFAULT_DEBUG_DIR))
+        timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
+        output_path = debug_dir / f"preprocessed-{timestamp}-{uuid4().hex[:8]}.jpg"
+
+        try:
+            debug_dir.mkdir(parents=True, exist_ok=True)
+            output_path.write_bytes(preprocessed_image.jpeg_bytes)
+        except OSError as exception:
+            logger.warning(
+                "Failed to save preprocessed OCR debug image. path=%s",
+                output_path,
+                exc_info=exception,
+            )
+            return
+
+        logger.info(
+            "Saved preprocessed OCR debug image. path=%s original=%dx%d processed=%dx%d",
+            output_path,
+            preprocessed_image.original_width,
+            preprocessed_image.original_height,
+            preprocessed_image.width,
+            preprocessed_image.height,
+        )
+
+
+def _is_truthy(value: str | None) -> bool:
+    return value is not None and value.lower() in {"1", "true", "yes", "on"}
