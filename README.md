@@ -139,14 +139,43 @@ OCR로 추출한 유효기간은 `YYYYMM` 형식으로 정규화합니다.
 
 예를 들어 `07/77`처럼 잘못 인식된 값은 `expiryYm: null`로 반환됩니다.
 
+## Error Response
+
+업로드 요청 형식 오류와 OCR 엔진 처리 실패는 팀 에러코드 컨벤션 응답으로 반환합니다.
+
+```json
+{
+  "timestamp": "2026-06-05T00:00:00.000+00:00",
+  "status": 400,
+  "error": "BAD_REQUEST",
+  "code": "OCR-REQ-001",
+  "reason": "INVALID_REQUEST",
+  "message": "잘못된 요청입니다.",
+  "details": [
+    {
+      "field": "image",
+      "message": "unsupported image format"
+    }
+  ],
+  "correlationId": "test-correlation-id",
+  "path": "/api/v1/cards/ocr"
+}
+```
+
+| HTTP | code | reason | message | 조건 |
+|---:|---|---|---|---|
+| 400 | `OCR-REQ-001` | `INVALID_REQUEST` | 잘못된 요청입니다. | multipart `image` 누락, 빈 파일, 5MB 초과, 지원하지 않는 이미지 형식 |
+| 500 | `OCR-OCR-900` | `OCR_ENGINE_FAILED` | OCR 처리 중 오류가 발생했습니다. | PaddleOCR 처리 중 예외 |
+| 500 | `OCR-SYS-900` | `INTERNAL_SERVER_ERROR` | 알 수 없는 내부 오류가 발생했습니다. | 처리되지 않은 내부 예외 |
+
+`X-Correlation-Id` 헤더가 있으면 `correlationId`에 그대로 포함하고, 없으면 `null`로 반환합니다.
+
 ## Warning
 
 현재 반환 가능한 warning:
 
 | warning | 의미 |
 |---|---|
-| `UNSUPPORTED_IMAGE_FORMAT` | 지원하지 않는 이미지 형식 |
-| `OCR_ENGINE_FAILED` | OCR 엔진 호출 실패 |
 | `OCR_TEXT_NOT_DETECTED` | OCR 텍스트가 감지되지 않음 |
 | `CARD_NUMBER_NOT_DETECTED` | 카드번호 후보를 찾지 못함 |
 | `EXPIRY_NOT_DETECTED` | 유효기간 후보를 찾지 못함 |
