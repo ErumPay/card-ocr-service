@@ -7,8 +7,10 @@ from uuid import uuid4
 
 import numpy as np
 
+from card_ocr_service.exception import ErrorCode, OcrException
 from card_ocr_service.parser.card_parser import find_card_number, normalize_expiry_ym
 from card_ocr_service.preprocessing.image_preprocessor import ImagePreprocessor, PreprocessedImage
+from card_ocr_service.schemas.error import ErrorDetail
 from card_ocr_service.schemas.ocr import CardOcrResponse
 from card_ocr_service.service.ocr_engine import OcrEngine, OcrTextLine, PaddleOcrEngine
 
@@ -53,24 +55,17 @@ class OcrService:
                 filename=filename,
             )
             self._save_preprocessed_debug_image(preprocessed_image)
-        except ValueError:
-            return CardOcrResponse(
-                card_number=None,
-                expiry_ym=None,
-                confidence=0.0,
-                warnings=["UNSUPPORTED_IMAGE_FORMAT"],
-            )
+        except ValueError as exception:
+            raise OcrException(
+                ErrorCode.INVALID_REQUEST,
+                details=[ErrorDetail(field="image", message=str(exception))],
+            ) from exception
 
         try:
             # 전처리된 이미지를 PaddleOCR에 넘기고, OCR text를 카드 도메인 응답으로 바꾼다.
             result = self._extract_with_rotation_fallback(preprocessed_image.image)
-        except Exception:
-            return CardOcrResponse(
-                card_number=None,
-                expiry_ym=None,
-                confidence=0.0,
-                warnings=["OCR_ENGINE_FAILED"],
-            )
+        except Exception as exception:
+            raise OcrException(ErrorCode.OCR_ENGINE_FAILED) from exception
 
         return CardOcrResponse(
             card_number=result.card_number,
