@@ -1,0 +1,6 @@
+*
+!pixi.toml
+!pixi.lock
+!pyproject.toml
+!src/
+!src/**
