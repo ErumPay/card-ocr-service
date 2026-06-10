@@ -40,7 +40,7 @@ pipeline {
 
         stage('Pixi Test') {
             steps {
-                sh 'docker run --rm -v "$PWD:/app" -w /app ghcr.io/prefix-dev/pixi:latest pixi run test'
+                sh 'docker run --rm -v jenkins_home:/var/jenkins_home -w "$WORKSPACE" ghcr.io/prefix-dev/pixi:latest pixi run test'
             }
         }
 
